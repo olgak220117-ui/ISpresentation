@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IS Channel Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F4F1EC;
+      --card: #FFFFFF;
+      --text: #1A1714;
+      --muted: #8A7F72;
+      --accent: #B8893E;
+      --accent-light: #F5EDD8;
+      --border: #E2DDD6;
+      --red: #C0392B;
+      --green: #27AE60;
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5; }
+
+    header {
+      background: var(--text); color: #fff; padding: 16px 32px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    header h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+    header span { color: var(--accent); font-style: italic; font-size: 22px; font-family: Georgia, serif; margin-right: 4px; }
+    header .tagline { font-size: 12px; color: #aaa; letter-spacing: 2px; text-transform: uppercase; }
+
+    .toolbar {
+      padding: 20px 32px 0; display: flex; align-items: center; gap: 12px;
+    }
+
+    .btn {
+      padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 500; transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--text); color: #fff; }
+    .btn-sm { padding: 5px 12px; font-size: 13px; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 20px;
+      padding: 20px 32px 40px;
+    }
+
+    .card {
+      background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+      padding: 22px; display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .card-title { font-size: 17px; font-weight: 600; }
+    .card-address { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    .stats { display: flex; gap: 20px; }
+    .stat { text-align: center; }
+    .stat-num { font-size: 24px; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+    .platforms { display: flex; flex-direction: column; gap: 8px; }
+    .platform-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      background: var(--bg); border-radius: 8px; font-size: 13px;
+    }
+    .platform-badge {
+      padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
+    }
+    .badge-airbnb { background: #FF5A5F22; color: #FF5A5F; }
+    .badge-booking { background: #00358022; color: #003580; }
+    .badge-agoda { background: #E0218A22; color: #C01878; }
+    .badge-other { background: #88888822; color: #555; }
+
+    .sync-status { font-size: 12px; color: var(--muted); flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .sync-error { color: var(--red); }
+
+    .calendar-block {
+      background: var(--accent-light); border-radius: 8px; padding: 10px 12px;
+      font-size: 12px;
+    }
+    .calendar-block .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+    .cal-url {
+      word-break: break-all; font-family: monospace; font-size: 11px;
+      color: var(--text); cursor: pointer;
+    }
+    .cal-url:hover { color: var(--accent); }
+
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 12px; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 14px; padding: 28px; width: 480px;
+      max-width: 95vw; display: flex; flex-direction: column; gap: 16px;
+    }
+    .modal h2 { font-size: 18px; font-weight: 600; }
+    .form-row { display: flex; flex-direction: column; gap: 6px; }
+    .form-row label { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .form-row input, .form-row select, .form-row textarea {
+      padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px; width: 100%; font-family: inherit; outline: none;
+    }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+      border-color: var(--accent);
+    }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+    .empty-state {
+      grid-column: 1 / -1; text-align: center; padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty-state h2 { font-size: 20px; margin-bottom: 8px; }
+
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--text); color: #fff; padding: 12px 20px;
+      border-radius: 10px; font-size: 14px; opacity: 0;
+      transition: opacity .3s; z-index: 200; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    .sync-all-btn { margin-left: auto; }
+
+    @media (max-width: 600px) {
+      .toolbar, .grid { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1><span>IS</span> Channel Manager</h1>
+    <div class="tagline">Intelligent Space · Phuket</div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="openAddProperty()">+ Добавить объект</button>
+  <button class="btn btn-secondary sync-all-btn" onclick="syncAll()">↻ Синхронизировать всё</button>
+</div>
+
+<div class="grid" id="properties-grid">
+  {% if not properties %}
+  <div class="empty-state">
+    <h2>Нет объектов</h2>
+    <p>Добавьте первый объект и подключите платформы.</p>
+  </div>
+  {% endif %}
+
+  {% for p in properties %}
+  <div class="card" id="card-{{ p.id }}">
+    <div class="card-header">
+      <div>
+        <div class="card-title">{{ p.name }}</div>
+        {% if p.address %}<div class="card-address">{{ p.address }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num">{{ p.upcoming }}</div>
+        <div class="stat-label">Предстоящих</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">{{ p.confirmed_total }}</div>
+        <div class="stat-label">Всего активных</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">{{ p.platforms | length }}</div>
+        <div class="stat-label">Платформ</div>
+      </div>
+    </div>
+
+    <div class="platforms">
+      {% for c in p.platforms %}
+      <div class="platform-row">
+        <span class="platform-badge badge-{{ c.platform }}">{{ c.platform }}</span>
+        <div class="sync-status {% if c.last_sync_error %}sync-error{% endif %}">
+          {% if c.last_sync_error %}
+            ⚠ {{ c.last_sync_error[:60] }}
+          {% elif c.last_synced_at %}
+            ✓ Синхр. {{ c.last_synced_at.strftime('%d.%m %H:%M') }}
+          {% else %}
+            Ожидает синхронизации
+          {% endif %}
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="deletePlatform({{ c.id }}, {{ p.id }})">✕</button>
+      </div>
+      {% else %}
+      <div style="font-size:13px;color:var(--muted);padding:4px 0;">Нет подключённых платформ</div>
+      {% endfor %}
+    </div>
+
+    <div class="calendar-block">
+      <div class="label">Мастер-календарь (iCal URL)</div>
+      <div class="cal-url" onclick="copyUrl('{{ p.calendar_url }}')" title="Нажмите для копирования">{{ p.calendar_url }}</div>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn btn-outline btn-sm" onclick="openAddPlatform({{ p.id }}, '{{ p.name }}')">+ Платформа</button>
+      <button class="btn btn-outline btn-sm" onclick="syncProperty({{ p.id }})">↻ Синхр.</button>
+      <button class="btn btn-outline btn-sm" onclick="viewBookings({{ p.id }})">📅 Бронирования</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProperty({{ p.id }}, '{{ p.name }}')">Удалить</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal: Add Property -->
+<div class="modal-overlay" id="modal-add-property">
+  <div class="modal">
+    <h2>Добавить объект</h2>
+    <div class="form-row">
+      <label>Название *</label>
+      <input type="text" id="prop-name" placeholder="Апартаменты Патонг 2BR">
+    </div>
+    <div class="form-row">
+      <label>Адрес</label>
+      <input type="text" id="prop-address" placeholder="Patong Beach, Phuket">
+    </div>
+    <div class="form-row">
+      <label>Описание</label>
+      <textarea id="prop-desc" rows="2" placeholder="Необязательно"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-property')">Отмена</button>
+      <button class="btn btn-primary" onclick="createProperty()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Platform -->
+<div class="modal-overlay" id="modal-add-platform">
+  <div class="modal">
+    <h2 id="platform-modal-title">Добавить платформу</h2>
+    <input type="hidden" id="platform-property-id">
+    <div class="form-row">
+      <label>Платформа</label>
+      <select id="platform-name">
+        <option value="airbnb">Airbnb</option>
+        <option value="booking">Booking.com</option>
+        <option value="agoda">Agoda</option>
+        <option value="other">Другая</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>iCal URL платформы (Export URL) *</label>
+      <input type="url" id="platform-ical-url" placeholder="https://www.airbnb.com/calendar/ical/...">
+    </div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+      <strong>Где найти:</strong><br>
+      Airbnb → Календарь → Экспорт → iCal<br>
+      Booking.com → Апартаменты → Календарь → iCal Export<br>
+      Agoda → Страница объекта → Синхронизация → Экспорт iCal
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-platform')">Отмена</button>
+      <button class="btn btn-primary" onclick="savePlatform()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Bookings -->
+<div class="modal-overlay" id="modal-bookings">
+  <div class="modal" style="width:600px;max-height:80vh;overflow-y:auto;">
+    <h2 id="bookings-title">Бронирования</h2>
+    <div id="bookings-list" style="display:flex;flex-direction:column;gap:8px;margin-top:4px;"></div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="btn btn-outline" onclick="closeModal('modal-bookings')">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function toast(msg, error = false) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.background = error ? '#C0392B' : '#1A1714';
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+
+  function openAddProperty() {
+    ['prop-name','prop-address','prop-desc'].forEach(id => document.getElementById(id).value = '');
+    openModal('modal-add-property');
+  }
+
+  async function createProperty() {
+    const name = document.getElementById('prop-name').value.trim();
+    if (!name) { toast('Укажите название', true); return; }
+    const res = await fetch('/api/properties', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        name,
+        address: document.getElementById('prop-address').value.trim() || null,
+        description: document.getElementById('prop-desc').value.trim() || null,
+      }),
+    });
+    if (!res.ok) { toast('Ошибка при создании', true); return; }
+    closeModal('modal-add-property');
+    toast('Объект добавлен');
+    setTimeout(() => location.reload(), 800);
+  }
+
+  function openAddPlatform(propertyId, propertyName) {
+    document.getElementById('platform-property-id').value = propertyId;
+    document.getElementById('platform-modal-title').textContent = `Добавить платформу — ${propertyName}`;
+    document.getElementById('platform-ical-url').value = '';
+    openModal('modal-add-platform');
+  }
+
+  async function savePlatform() {
+    const propertyId = document.getElementById('platform-property-id').value;
+    const platform = document.getElementById('platform-name').value;
+    const url = document.getElementById('platform-ical-url').value.trim();
+    if (!url) { toast('Укажите iCal URL', true); return; }
+    const res = await fetch(`/api/properties/${propertyId}/platforms`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ platform, ical_export_url: url, enabled: true }),
+    });
+    if (!res.ok) { toast('Ошибка', true); return; }
+    closeModal('modal-add-platform');
+    toast('Платформа добавлена, запускаем синхронизацию...');
+    await fetch(`/api/sync/${propertyId}`, { method: 'POST' });
+    setTimeout(() => location.reload(), 1200);
+  }
+
+  async function deletePlatform(connId, propertyId) {
+    if (!confirm('Удалить подключение?')) return;
+    await fetch(`/api/platforms/${connId}`, { method: 'DELETE' });
+    toast('Удалено');
+    setTimeout(() => location.reload(), 600);
+  }
+
+  async function deleteProperty(id, name) {
+    if (!confirm(`Удалить объект "${name}" и все его данные?`)) return;
+    await fetch(`/api/properties/${id}`, { method: 'DELETE' });
+    toast('Объект удалён');
+    setTimeout(() => location.reload(), 600);
+  }
+
+  async function syncProperty(id) {
+    toast('Синхронизация...');
+    const res = await fetch(`/api/sync/${id}`, { method: 'POST' });
+    const data = await res.json();
+    const total = Object.values(data.results).reduce((s, v) => s + v, 0);
+    toast(`Готово: ${total} бронирований обновлено`);
+    setTimeout(() => location.reload(), 1200);
+  }
+
+  async function syncAll() {
+    toast('Синхронизация всех объектов...');
+    const res = await fetch('/api/sync/all', { method: 'POST' });
+    const data = await res.json();
+    toast(`Синхронизировано ${data.synced_properties} объектов`);
+    setTimeout(() => location.reload(), 1500);
+  }
+
+  async function viewBookings(propertyId) {
+    const res = await fetch(`/api/properties/${propertyId}`);
+    const data = await res.json();
+    document.getElementById('bookings-title').textContent = `Бронирования — ${data.name}`;
+    const list = document.getElementById('bookings-list');
+    if (!data.bookings.length) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:13px;">Нет активных бронирований</div>';
+    } else {
+      list.innerHTML = data.bookings.map(b => `
+        <div style="display:flex;gap:12px;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:13px;">
+          <span class="platform-badge badge-${b.platform}">${b.platform}</span>
+          <span>${b.check_in} → ${b.check_out}</span>
+          <span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.raw_summary || ''}</span>
+        </div>
+      `).join('');
+    }
+    openModal('modal-bookings');
+  }
+
+  function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => toast('URL скопирован в буфер обмена'));
+  }
+</script>
+
+</body>
+</html>
