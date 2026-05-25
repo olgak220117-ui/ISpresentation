@@ -11,6 +11,7 @@ Flow:
 
 import logging
 from datetime import date, datetime, timezone
+from typing import Optional
 
 import requests
 from icalendar import Calendar, Event, vText
@@ -30,7 +31,7 @@ PLATFORM_DISPLAY = {
 REQUEST_TIMEOUT = 15  # seconds
 
 
-def _to_date(val) -> date | None:
+def _to_date(val) -> Optional[date]:
     if val is None:
         return None
     if isinstance(val, datetime):

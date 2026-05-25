@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -9,7 +10,7 @@ from .sync import sync_all
 
 logger = logging.getLogger(__name__)
 
-_scheduler: BackgroundScheduler | None = None
+_scheduler: Optional[BackgroundScheduler] = None
 
 
 def _run_sync():
